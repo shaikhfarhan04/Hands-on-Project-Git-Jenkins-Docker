@@ -3,30 +3,42 @@ pipeline {
 
     stages {
 
-        stage('Hello') {
+        stage('Checkout') {
             steps {
-                echo 'Hello from Jenkins!'
+                echo 'Checking out source code...'
+                checkout scm
             }
         }
 
-        stage('Check Linux') {
+        stage('Build') {
             steps {
-                sh 'whoami'
-                sh 'pwd'
+                echo 'Building application...'
                 sh 'ls -la'
             }
         }
 
-        stage('Check Git') {
+        stage('Docker Build') {
             steps {
-                sh 'git --version'
+                echo 'Building Docker image...'
+                sh 'docker build -t myapp:1.0 .'
             }
         }
 
-        stage('Check Docker') {
+        stage('Docker Run') {
             steps {
-                sh 'docker --version'
+                echo 'Starting Docker container...'
+                sh 'docker run -d --name myapp -p 8080:8080 myapp:1.0'
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
