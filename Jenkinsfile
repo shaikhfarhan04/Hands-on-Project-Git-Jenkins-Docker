@@ -1,11 +1,11 @@
 pipeline {
+
     agent any
 
     stages {
 
         stage('Checkout') {
             steps {
-                echo 'Checking out source code...'
                 checkout scm
             }
         }
@@ -13,32 +13,53 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building application...'
-                sh 'ls -la'
+                sh 'docker build -t jenkins-docker-app:${BUILD_NUMBER} .'
             }
         }
 
-        stage('Docker Build') {
+        stage('Test') {
             steps {
-                echo 'Building Docker image...'
-                sh 'docker build -t myapp:1.0 .'
+                echo 'Running tests...'
+                sh 'docker run --rm jenkins-docker-app:${BUILD_NUMBER} python -m pytest'
             }
         }
 
-        stage('Docker Run') {
+        stage('Run Container') {
             steps {
-                echo 'Starting Docker container...'
-                sh 'docker run -d --name myapp -p 8080:8080 myapp:1.0'
+                sh '''
+                    docker rm -f jenkins-docker-app || true
+
+                    docker run -d \
+                      --name jenkins-docker-app \
+                      -p 5000:5000 \
+                      jenkins-docker-app:${BUILD_NUMBER}
+                '''
+            }
+        }
+
+        stage('Verify') {
+            steps {
+                sh '''
+                    sleep 5
+                    curl -f http://localhost:5000/health
+                '''
             }
         }
     }
 
     post {
+
         success {
             echo 'Pipeline completed successfully!'
         }
 
         failure {
             echo 'Pipeline failed!'
+        }
+
+        always {
+            echo 'Cleaning workspace...'
+            cleanWs()
         }
     }
 }
